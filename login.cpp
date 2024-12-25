@@ -1,4 +1,5 @@
 #include "login.h"
+#include "mainwindow.h"
 #include "ui_login.h"  // 确保包含生成的 UI 头文件
 #include <QFile>
 #include <QTextStream>
@@ -43,7 +44,7 @@ void login::on_loginSureButton_2_clicked() {
 
 // 验证凭据函数
 bool login::validateCredentials(const QString &userId, const QString &password) {
-    QFile file("../doctor.txt");
+    QFile file(DATA_PATH("doctor.txt"));
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QMessageBox::warning(this, "Read Error", "Cannot open file:\n" + file.errorString());
         return false;

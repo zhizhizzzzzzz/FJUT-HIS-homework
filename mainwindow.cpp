@@ -17,6 +17,7 @@
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
+    qDebug() << DATA_PATH("data.txt");
     ui->setupUi(this);
     tcpServer = new QTcpServer(this);
     tcpSocket = new QTcpSocket(this);
@@ -48,6 +49,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->deleteTableView->setStyleSheet("alternate-background-color: #1f1f1f;background-color:#2d2d2d;selection-background-color:#1492E6;selection-color:white;");
     // ui->deleteTableView->setSelectionBehavior(QAbstractItemView->SelectRows)#设置只能选中整行
     // ui->deleteTableView->setSelectionMode(QAbstractItemView->SingleSelection)#设置只能选中一行
+
+
     ui->searchStackedWidget->setCurrentIndex(0); // 设置初始界面为 searchStackedWidget 的第一个页面
 
     // connect(ui->searchButton, &QPushButton::clicked, this, &MainWindow::on_searchButton_clicked);
@@ -67,6 +70,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(ui->lineEditSearch, &QLineEdit::textChanged, this, &MainWindow::on_searchTextBox_textChanged);
     // loadTotalData();
 
+    connect(ui->chartComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onChartComboBoxIndexChanged(int)));
 
 }
 
@@ -185,6 +189,7 @@ void MainWindow::onUserLoggedIn()
     loadTotalData(); // 加载数据
     loadDataIntoQueue();
     loadDataIntoTableView();
+    updateChartView(ui->chartComboBox->currentIndex());
 
     ui->pushButton_9->hide();
     ui->labeltologin->hide();
@@ -226,19 +231,20 @@ void MainWindow::readTcpData() {
 
             addDataItem(item); // 添加到链表头部
             qDebug() << "Parsed data:" << item.ID << item.name << item.age << item.sex << item.whathappend << item.date << item.ifaccept;
-            saveDataToFile("../data.txt");
+            saveDataToFile(DATA_PATH("data.txt"));
             loadDataIntodeleteTableView();
 
             // displayList.push_back(queueitem);
             displayList.append(queueitem);
             // qDebug() << "Parsed data:" << queueitem.ID << queueitem.name << queueitem.age << queueitem.sex << queueitem.whathappend << queueitem.date << queueitem.ifaccept;
-            // saveQueueDataToFile("../current.txt");
+            // saveQueueDataToFile(DATA_PATH("current.txt"));
             // // loadDataIntoQueue();
             // addQueueItemAndRefreshTableView();
             // loadTotalData(); // 加载数据
             displayList.clear();
             loadDataIntoQueue();
             loadDataIntoTableView();
+            updateChartView(ui->chartComboBox->currentIndex());
         }
     }
 }
@@ -310,9 +316,8 @@ void PriorityQueue::push(const DataQueueItem& item) {
         // }
         heap.push_back(item);
         siftUp(heap.size() - 1);
-
-
     }
+    //Todo:把库改成自己实现的链队push
 
     // 删除元素
 void PriorityQueue::remove(const QString& id) {
@@ -400,7 +405,7 @@ bool PriorityQueue::empty() const {
 }
 
 void MainWindow::loadDataIntoQueue() {
-    QFile file("../data.txt");
+    QFile file(DATA_PATH("data.txt"));
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QMessageBox::warning(this, tr("Read Error"), tr("Cannot open file:\n%1").arg(file.errorString()));
         return;
@@ -440,7 +445,7 @@ void MainWindow::loadDataIntoQueue() {
 
 
 void MainWindow::loadTotalData() {
-    QFile file("../data.txt");
+    QFile file(DATA_PATH("data.txt"));
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QMessageBox::warning(this, tr("Read Error"), tr("Cannot open file:\n%1").arg(file.errorString()));
         return;
@@ -638,6 +643,103 @@ void MainWindow::initializeTableView() {
     ui->tableView->setModel(model);
 }
 
+void MainWindow::updateChartView(int type){
+    DataItem *current = headItem;
+    QChart *chart = new QChart();
+    QPieSeries *series = new QPieSeries;
+    QString title;
+    std::vector<QString> labels;
+    std::vector<int> counters;
+    int len,i;
+    switch(type){
+    case 0:{
+        title = "年龄分布情况";
+        labels = {"19","20","21","22"}; // must > 1 Item
+        labels.insert(labels.begin(), labels[0]+"-");
+        labels.push_back(labels.back()+"+");
+        len = labels.size();
+        counters = std::vector<int>(len,0);
+        while (current != nullptr) {
+            int age = current->age.toInt();
+            if(age < labels[1].toInt())
+                counters[0]++;
+            else if(age > labels[len-2].toInt())
+                counters[len - 1]++;
+            else
+                for(i = 1; i < len - 1; i++)
+                    if(age == labels[i].toInt())
+                        counters[i]++;
+            current = current->next;
+        }
+        break;
+    }
+    case 1:{
+        title = "性别分布情况";
+        labels = {"男","女","其他"};
+        len = labels.size();
+        counters = std::vector<int>(len,0);
+        while (current != nullptr) {
+            if(current->sex==labels[0])
+                counters[0]++;
+            else if(current->sex==labels[1])
+                counters[1]++;
+            else
+                counters[2]++;
+            current = current->next;
+        }
+        break;
+    }
+    case 2:{
+        title = "诊断分布情况";
+        labels = {"咳嗽","发热","感冒","肺炎","哮喘","晕倒"}; // TODO: 加一个医生可以手动添加
+        len = labels.size();
+        counters = std::vector<int>(len,0);
+        while (current != nullptr) {
+            for(i = 0; i < len; i++)
+                if(current->whathappend.contains(labels[i])) // TODO: 使用KMP实现
+                    counters[i]++;
+            current = current->next;
+        }
+        break;
+    }
+    case 3:{
+        title = "高峰时间段分布";
+        int hourStep = 4;
+        for (i = 0; i < 24; i += hourStep)
+            labels.push_back(QString("%1:00-%2:59").arg(i, 2, 10, QChar('0')).arg(i + 3, 2, 10, QChar('0')));
+        len = labels.size();
+        counters = std::vector<int>(len,0);
+        while (current != nullptr) {
+            QString dateTimeStr = current->date; // 假设格式为 "xxxx-xx-xx-xx:xx"
+            QString timeStr = dateTimeStr.mid(11, 5); // 提取时间部分 "xx:xx"
+            int hour = timeStr.left(2).toInt(); // 提取小时部分
+            for (i = 0; i < (int)(24/hourStep); i ++)
+                if(hour >= i && hour < hourStep*(i+1))
+                    counters[i]++;
+            current = current->next;
+        }
+        break;
+    }
+    }
+    qDebug()<<labels;
+    qDebug()<<counters;
+    for(int i =0;i<len;i++){
+        QPieSlice *slice = new QPieSlice(labels[i], counters[i]);
+        QColor color = QColor::fromRgb(QRandomGenerator::global()->generate());
+        slice->setColor(color); series->append(slice);
+    }
+
+    chart->addSeries(series);
+    chart->setTitle(title);
+    chart->legend()->show();
+    ui->chartView->setChart(chart);
+    ui->chartView->setRenderHint(QPainter::Antialiasing);
+}
+
+void MainWindow::onChartComboBoxIndexChanged(int index) {
+    updateChartView(index);
+}
+
 // 2. 实现删除功能
 void MainWindow::on_pushButton_16_clicked() {
     QStandardItemModel *model = qobject_cast<QStandardItemModel*>(ui->deleteTableView->model());
@@ -677,7 +779,7 @@ void MainWindow::on_pushButton_16_clicked() {
         }
 
         // 保存更改到文件
-        QFile file("../data.txt");
+        QFile file(DATA_PATH("data.txt"));
         if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
             QMessageBox::warning(this, tr("Write Error"), tr("Cannot open file:\n%1").arg(file.errorString()));
             return;
@@ -793,7 +895,7 @@ void MainWindow::on_pushButton_17_clicked() {
         }
 
         // 保存更改到文件
-        saveDataToFile("../data.txt");
+        saveDataToFile(DATA_PATH("data.txt"));
         loadDataIntodeleteTableView();
 
         // 刷新显示列表和表格视图
@@ -897,7 +999,7 @@ void MainWindow::on_pushButton_15_clicked() {
         addDataItem(item); // 添加到链表头部
         qDebug() << "add OK!";
         try {
-            saveDataToFile("../data.txt");
+            saveDataToFile(DATA_PATH("data.txt"));
             qDebug() << "save OK!";
         } catch (const std::exception &e) {
             qDebug() << "捕获到异常:" << e.what();
@@ -1074,6 +1176,7 @@ void MainWindow::on_updateEmpButton_clicked()
     deselectedPushButton(ui->aboutButton);
     deselectedPushButton(ui->searchButton);
     deselectedPushButton(ui->addEmpButton);
+    updateChartView(ui->chartComboBox->currentIndex());
     ui->searchStackedWidget->setCurrentIndex(3);
 }
 

@@ -6,6 +6,7 @@
 
 QT       += core gui sql
 QT       += network
+QT       += charts
 FORMS += login.ui
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -49,3 +50,5 @@ FORMS += \
 
 RESOURCES += \
     resources.qrc
+
+DISTFILES +=

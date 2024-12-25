@@ -13,9 +13,16 @@
 #include <QTcpServer>
 #include <QMutexLocker>
 #include <QDateTime>
-#include "login.h"
-#include <QDebug>
 #include <QList>
+#include <QChartView>
+#include <QPieSeries>
+#include <QPieSlice>
+#include <QRandomGenerator>
+
+#include "login.h"
+
+
+#define DATA_PATH(fileName) (QCoreApplication::applicationDirPath() + "/../../../data/" + fileName)
 
 namespace Ui {
 class MainWindow;
@@ -177,6 +184,8 @@ public:
     void saveQueueDataToFile(const QString &filename);
     void addQueueItemAndRefreshTableView() ;
     void initializeTableView();
+    void updateChartView(int type);
+    void onChartComboBoxIndexChanged(int index);
 
 private:
     Ui::MainWindow *ui;
@@ -187,8 +196,6 @@ private:
     QTcpServer *tcpServer;
     login *loginDialog;
     QList<DataQueueItem> displayList;
-
-
 };
 
 #endif // MAINWINDOW_H
