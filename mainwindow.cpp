@@ -2,6 +2,9 @@
 #include <algorithm>
 #include "about.h"
 #include "techused.h"
+#include <QInputDialog>
+#include <QMessageBox>
+#include <QStandardItemModel>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent),
 ui(new Ui::MainWindow),
@@ -50,7 +53,7 @@ graph({
     connect(tcpSocket, &QTcpSocket::disconnected, this, &MainWindow::onDisconnected);
     connect(tcpSocket, &QTcpSocket::stateChanged, this, &MainWindow::onStateChanged);
     connect(loginDialog, &login::userLoggedIn, this, &MainWindow::onUserLoggedIn);
-
+    connect(ui->tableView, &QTableView::doubleClicked, this, &MainWindow::editCurrentRow);
     if (!tcpServer->listen(QHostAddress::Any, 8081)) {
         qDebug() << "Server could not start!";
     } else {
@@ -80,6 +83,98 @@ MainWindow::~MainWindow()
     tcpSocket->close();
 
 }
+
+
+void MainWindow::editCurrentRow() {
+    // 获取当前选中的行和列
+    QModelIndex index = ui->tableView->currentIndex();
+    if (!index.isValid())
+        return; // 如果没有选中的行，直接返回
+
+    QStandardItemModel *model = qobject_cast<QStandardItemModel*>(ui->tableView->model());
+    if (!model)
+        return; // 如果模型不是QStandardItemModel，直接返回
+
+    int row = index.row();
+    QStandardItem *whathappendItem = model->item(row, 4); // 假设what happened在第5列（索引从0开始）
+    if (!whathappendItem)
+        return; // 如果没有找到对应的项，直接返回
+
+    // 弹出输入框让用户输入
+    bool ok;
+    QString newWhatHappend = QInputDialog::getText(this, tr("编辑症状"),
+                                                   tr("输入内容:"), QLineEdit::Normal,
+                                                   whathappendItem->text(), &ok);
+    QString ifacceptStr = model->item(row, 6)->text();
+    if (ifacceptStr == "急诊") {
+        ifacceptStr = "1";
+    } else if (ifacceptStr == "门诊") {
+        ifacceptStr = "0";
+    }
+    if (ok && !newWhatHappend.isEmpty()) {
+        DataItem cpval = {
+            model->item(row, 0)->text(),
+            model->item(row, 1)->text(),
+            model->item(row, 2)->text(),
+            model->item(row, 3)->text(),
+            model->item(row, 4)->text(),
+            model->item(row, 5)->text(),
+            ifacceptStr,
+            nullptr,
+            nullptr
+        };
+        DataQueueItem cpqval = {
+            model->item(row, 0)->text(),
+            model->item(row, 1)->text(),
+            model->item(row, 2)->text(),
+            model->item(row, 3)->text(),
+            model->item(row, 4)->text(),
+            model->item(row, 5)->text(),
+            ifacceptStr,
+            nullptr
+        };
+        DataItem *hitDI = nullptr;
+        DataQueueItem *hitDQI = nullptr;
+
+        DataItem *current = headItem;
+        DataQueueItem *qcurrent = headQueueItem;
+        printLinkedList(current);
+        qDebug()<<"------------------------";
+        printLinkedList(qcurrent);
+        while (current != nullptr) {
+            qDebug() << current->toString()<<"---COMP---"<< cpval.toString();
+            bool is_same = compareDataItems(*current,cpval);
+            qDebug() << "is_same = "<<is_same;
+            if (is_same){
+                hitDI = current;
+                break;
+            }
+            current=current->next;
+        }
+        while (qcurrent != nullptr) {
+            qDebug() << qcurrent->toString()<<"---COMPQ---"<< cpval.toString();
+            bool is_same = compareDataItems(*qcurrent,cpval);
+            qDebug() << "is_same_queue = "<<is_same;
+            if (is_same){
+                hitDQI = qcurrent;
+                break;
+            }
+            qcurrent=qcurrent->next;
+        }
+        if(hitDI!=nullptr&&hitDQI!=nullptr){
+            hitDI->whathappend=newWhatHappend;
+            hitDQI->whathappend=newWhatHappend;
+            saveDataToFile(DATA_PATH("data.txt"));
+            displayList.clear();
+            loadDataIntodeleteTableView();
+            loadDataIntoQueue();
+            loadDataIntoTableView();
+            updateChartView(ui->chartComboBox->currentIndex());
+        }
+    }
+}
+
+
 
 void MainWindow::addDataItem(const DataItem &item) {
     // 遍历链表检查是否存在相同的数据
@@ -127,17 +222,6 @@ void MainWindow::countIfAcceptNegativeOne() {
 
     // 在 empLabel 上显示结果
     ui->empLabel->setText(QString("%1").arg(count));
-}
-
-DataItem* MainWindow::findDataItem(const QString &id) {
-    DataItem *current = headItem;
-    while (current) {
-        if (current->ID == id) {
-            return current;
-        }
-        current = current->next;
-    }
-    return nullptr;
 }
 
 void MainWindow::newConnection()
@@ -256,13 +340,14 @@ void MainWindow::readTcpData() {
             QStringList fields = contentData.split(" ", Qt::SkipEmptyParts);
             qDebug() << "Fields:" << fields;
             if (fields.size() == 2) {
-
-
+                QMutexLocker locker(&dataMutex); // 确保线程安全
                 auto v = graph.getVertexPos(fields[0].toInt());
                 auto d = graph.getVertexPos(fields[1].toInt());
                 Dijkstra(graph, v, dist, path);
                 std::string shortestPath = getShortestPath(graph, v, d, path);
                 qDebug() << QString::fromStdString(shortestPath);
+                tcpSocket->write(shortestPath.c_str());
+                tcpSocket->flush(); // 确保消息被立即发送
             } else {
                 qDebug() << "Unexpected number of fields for frameHeader 'b'.";
             }
@@ -273,8 +358,6 @@ void MainWindow::readTcpData() {
         }
     }
 }
-
-
 
 void MainWindow::addQueueItemAndRefreshTableView() {
     QStandardItemModel *model = qobject_cast<QStandardItemModel*>(ui->tableView->model());
