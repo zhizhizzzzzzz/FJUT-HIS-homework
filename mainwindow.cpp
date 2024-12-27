@@ -1,24 +1,44 @@
 #include "mainwindow.h"
-#include "ui_mainwindow.h"
-#include <QMessageBox>
-#include "techused.h"
-#include "about.h"
-#include <QFile>
-#include <QTextStream>
-#include <QStandardItemModel>
-#include "login.h"
-#include <iostream>
-#include <vector>
 #include <algorithm>
-#include <QDate>
-#include <QString>
-#include <QInputDialog>
-#include <QAbstractItemView>
+#include "about.h"
+#include "techused.h"
 
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
+MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent),
+ui(new Ui::MainWindow),
+graph({
+     {1, 2, 4}, {1, 12, 2}, {1, 11, 3},
+     {2, 1, 4}, {2, 3, 5}, {2, 5, 8},
+     {3, 2, 5}, {3, 4, 4},
+     {4, 3, 4}, {4, 5, 4}, {4, 6, 8},
+     {5, 2, 8}, {5, 4, 5}, {5, 6, 1}, {5, 7, 3},
+     {6, 4, 8}, {6, 5, 1}, {6, 7, 2},
+     {7, 5, 3}, {7, 6, 2}, {7, 8, 2},{7, 12, 3},
+     {8, 7, 2}, {8, 9, 3},
+     {9, 8, 3}, {9, 10, 4}, {9, 12, 5}, {9, 13, 8},
+     {10, 11, 3}, {10, 9, 4},
+     {11, 1, 3}, {11, 10, 3},
+     {12, 1, 2}, {12, 7, 3}, {12, 9, 5},
+     {13, 9, 8}, {13, 14, 2},
+     {14, 13, 2}, {14, 23, 3}, {14, 15, 2}, {14, 23, 3},
+     {15, 14, 2}, {15, 23, 2}, {15, 16, 7}, {15, 17, 2},
+     {16, 15, 7}, {16, 17, 5},
+     {17, 15, 2}, {17, 16, 5}, {17, 18, 1},
+     {18, 17, 1}, {18, 19, 6},
+     {19, 18, 6}, {19, 20, 4},
+     {20, 19, 4}, {20, 21, 5}, {20, 23, 2},
+     {21, 22, 1}, {21, 20, 5}, {21, 23, 4},
+     {22, 21, 1},
+     {23,14,3},{23,15,2},{23,20,2},{23,21,4}
+  })
 {
     qDebug() << DATA_PATH("data.txt");
+
+    int n = graph.numberOfVertices();
+    dist = new int[n];
+    path = new int[n];
+
     ui->setupUi(this);
+
     tcpServer = new QTcpServer(this);
     tcpSocket = new QTcpSocket(this);
     // tcpSocket->connectToHost(QHostAddress("192.168.10.230"), 8081);
@@ -37,38 +57,18 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         qDebug() << "Server started!";
     }
 
-
-
     ui->tableView->setAlternatingRowColors(true);
     ui->tableView->setStyleSheet("alternate-background-color: #1f1f1f;background-color:#2d2d2d;selection-background-color:#1492E6;selection-color:white;");
 
-    ui->updateTableView->setAlternatingRowColors(true);
-    ui->updateTableView->setStyleSheet("alternate-background-color: #1f1f1f;background-color:#2d2d2d;selection-background-color:#1492E6;selection-color:white;");
 
     ui->deleteTableView->setAlternatingRowColors(true);
     ui->deleteTableView->setStyleSheet("alternate-background-color: #1f1f1f;background-color:#2d2d2d;selection-background-color:#1492E6;selection-color:white;");
-    // ui->deleteTableView->setSelectionBehavior(QAbstractItemView->SelectRows)#设置只能选中整行
-    // ui->deleteTableView->setSelectionMode(QAbstractItemView->SingleSelection)#设置只能选中一行
 
 
     ui->searchStackedWidget->setCurrentIndex(0); // 设置初始界面为 searchStackedWidget 的第一个页面
-
-    // connect(ui->searchButton, &QPushButton::clicked, this, &MainWindow::on_searchButton_clicked);
-    // connect(ui->addEmpButton, &QPushButton::clicked, this, &MainWindow::on_addEmpButton_clicked);
-    // connect(ui->updateEmpButton, &QPushButton::clicked, this, &MainWindow::on_updateEmpButton_clicked);
-    // connect(ui->deleteEmpButton, &QPushButton::clicked, this, &MainWindow::on_deleteEmpButton_clicked);
-    // connect(ui->techButton, &QPushButton::clicked, this, &MainWindow::on_techButton_clicked);
-    // connect(ui->aboutButton, &QPushButton::clicked, this, &MainWindow::on_aboutButton_clicked);
-    // connect(ui->closeButton, &QPushButton::clicked, this, &MainWindow::on_closeButton_clicked);
-    // connect(ui->minimizeButton, &QPushButton::clicked, this, &MainWindow::on_minimizeButton_clicked);
     connect(ui->pushButton_9, &QPushButton::clicked, this, &MainWindow::on_pushbtton_9_clicked);
 
-    // connect(ui->pushButton_15, &QPushButton::clicked, this, &MainWindow::on_pushButton_15_clicked);
-    // connect(ui->pushButton_16, &QPushButton::clicked, this, &MainWindow::on_pushButton_16_clicked);
-    // connect(ui->pushButton_17, &QPushButton::clicked, this, &MainWindow::on_pushButton_17_clicked);
-    // connect(ui->pushButton_3, &QPushButton::clicked, this, &MainWindow::on_pushButton_3_clicked);
     connect(ui->lineEditSearch, &QLineEdit::textChanged, this, &MainWindow::on_searchTextBox_textChanged);
-    // loadTotalData();
 
     connect(ui->chartComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onChartComboBoxIndexChanged(int)));
 
@@ -191,6 +191,18 @@ void MainWindow::onUserLoggedIn()
     loadDataIntoTableView();
     updateChartView(ui->chartComboBox->currentIndex());
 
+    root = createDepartmentTree();
+
+    // 获取 treeView 和 workTableView
+    QTreeView* treeView = ui->treeView;
+    workTableView = ui->workTableView;
+
+    // 加载树数据到 treeView
+    populateTreeView(treeView, root);
+
+    // 连接 treeView 点击事件
+    connect(treeView, &QTreeView::clicked, this, &MainWindow::onTreeViewClicked);
+    autoGenerateDutySchedules(dutySchedules, 32);
     ui->pushButton_9->hide();
     ui->labeltologin->hide();
     ui->labeltologin_2->hide();
@@ -202,52 +214,66 @@ void MainWindow::onUserLoggedIn()
 
 void MainWindow::readTcpData() {
     while (tcpSocket->canReadLine()) {
-        QString line = tcpSocket->readLine();
-        qDebug() << line;
-        QStringList fields = line.split(" ", Qt::SkipEmptyParts);
-        if (fields.size() == 7) {
-            DataItem item;
+        QString line = tcpSocket->readLine().trimmed(); // 去掉前后空白字符
+        qDebug() << "Received line:" << line; // 打印接收到的具体内容
 
-            item.ID = fields[0];
-            item.name = fields[1];
-            item.age = fields[2];
-            item.sex = fields[3];
-            item.whathappend = fields[4];
-            item.date = fields[5];
-            item.ifaccept = fields[6].replace("\n","");
-            item.next = nullptr;
+        QChar frameHeader = line.left(1)[0]; // 获取帧头数据
+        QString contentData = line.mid(1);   // 获取内容数据
 
-            DataQueueItem queueitem;
-
-            queueitem.ID = fields[0];
-            queueitem.name = fields[1];
-            queueitem.age = fields[2];
-            queueitem.sex = fields[3];
-            queueitem.whathappend = fields[4];
-            queueitem.date = fields[5];
-            queueitem.ifaccept = fields[6].replace("\n","");
-            queueitem.next = nullptr;
+        if (contentData.isEmpty()) {
+            qDebug() << "Empty content data, ignoring.";
+            continue; // 忽略空数据
+        }
 
 
-            addDataItem(item); // 添加到链表头部
-            qDebug() << "Parsed data:" << item.ID << item.name << item.age << item.sex << item.whathappend << item.date << item.ifaccept;
-            saveDataToFile(DATA_PATH("data.txt"));
-            loadDataIntodeleteTableView();
+        if (frameHeader == 'a') {
+            QStringList fields = contentData.split(" ", Qt::SkipEmptyParts);
+            qDebug() << "Fields:" << fields;
+            if (fields.size() == 7) {
+                DataItem item;
 
-            // displayList.push_back(queueitem);
-            displayList.append(queueitem);
-            // qDebug() << "Parsed data:" << queueitem.ID << queueitem.name << queueitem.age << queueitem.sex << queueitem.whathappend << queueitem.date << queueitem.ifaccept;
-            // saveQueueDataToFile(DATA_PATH("current.txt"));
-            // // loadDataIntoQueue();
-            // addQueueItemAndRefreshTableView();
-            // loadTotalData(); // 加载数据
-            displayList.clear();
-            loadDataIntoQueue();
-            loadDataIntoTableView();
-            updateChartView(ui->chartComboBox->currentIndex());
+                item.ID = fields[0];
+                item.name = fields[1];
+                item.age = fields[2];
+                item.sex = fields[3];
+                item.whathappend = fields[4];
+                item.date = fields[5];
+                item.ifaccept = fields[6].replace("\n", "");
+                item.next = nullptr;
+
+                addDataItem(item); // 添加到链表头部
+                qDebug() << "Parsed data:" << item.ID << item.name << item.age << item.sex << item.whathappend << item.date << item.ifaccept;
+                saveDataToFile(DATA_PATH("data.txt"));
+                loadDataIntodeleteTableView();
+                displayList.clear();
+                loadDataIntoQueue();
+                loadDataIntoTableView();
+                updateChartView(ui->chartComboBox->currentIndex());
+            } else {
+                qDebug() << "Unexpected number of fields for frameHeader 'a'.";
+            }
+        } else if (frameHeader == 'b') {
+            QStringList fields = contentData.split(" ", Qt::SkipEmptyParts);
+            qDebug() << "Fields:" << fields;
+            if (fields.size() == 2) {
+
+
+                auto v = graph.getVertexPos(fields[0].toInt());
+                auto d = graph.getVertexPos(fields[1].toInt());
+                Dijkstra(graph, v, dist, path);
+                std::string shortestPath = getShortestPath(graph, v, d, path);
+                qDebug() << QString::fromStdString(shortestPath);
+            } else {
+                qDebug() << "Unexpected number of fields for frameHeader 'b'.";
+            }
+        } else if (frameHeader == 'c') {
+            qDebug() << "Processing frameHeader 'c' data";
+        } else {
+            qDebug() << "Unknown frameHeader:" << frameHeader;
         }
     }
 }
+
 
 
 void MainWindow::addQueueItemAndRefreshTableView() {
@@ -1195,6 +1221,7 @@ void MainWindow::on_empDept_currentIndexChanged(const int &index)
     // 空壳函数，用于处理事件
 }
 
+
 void MainWindow::on_deleteEmpButton_clicked()
 {
     selectedPushButton(ui->deleteEmpButton);
@@ -1204,6 +1231,119 @@ void MainWindow::on_deleteEmpButton_clicked()
     deselectedPushButton(ui->searchButton);
     deselectedPushButton(ui->addEmpButton);
     ui->searchStackedWidget->setCurrentIndex(4);
+
+
+
+}
+
+TreeNode* MainWindow::createDepartmentTree() {
+    TreeNode* root = new TreeNode{"校医室"};
+
+    TreeNode* fluDept = new TreeNode{"感冒发热科"};
+    fluDept->children.append(new TreeNode{"诊室1"});
+    fluDept->children.append(new TreeNode{"诊室2"});
+
+    TreeNode* internalDept = new TreeNode{"内科"};
+    internalDept->children.append(new TreeNode{"诊室3"});
+    internalDept->children.append(new TreeNode{"诊室4"});
+
+    TreeNode* surgeryDept = new TreeNode{"外科"};
+    surgeryDept->children.append(new TreeNode{"诊室5"});
+    surgeryDept->children.append(new TreeNode{"诊室6"});
+
+    TreeNode* emergencyDept = new TreeNode{"急诊"};
+    emergencyDept->children.append(new TreeNode{"诊室7"});
+    emergencyDept->children.append(new TreeNode{"诊室8"});
+
+    TreeNode* pharmacyDept = new TreeNode{"药房"};
+    TreeNode* treatmentDept = new TreeNode{"处置室"};
+
+    root->children.append(fluDept);
+    root->children.append(internalDept);
+    root->children.append(surgeryDept);
+    root->children.append(emergencyDept);
+    root->children.append(pharmacyDept);
+    root->children.append(treatmentDept);
+
+    return root;
+}
+
+void MainWindow::populateTreeView(QTreeView* treeView, TreeNode* root) {
+    QStandardItemModel* model = new QStandardItemModel;
+
+    // 清除所有列
+    model->removeColumns(0, model->columnCount());
+
+    // 设置根节点
+    QStandardItem* rootItem = new QStandardItem(root->name);
+    model->appendRow(rootItem);
+
+    // 递归添加子节点
+    std::function<void(TreeNode*, QStandardItem*)> addChildren = [&](TreeNode* node, QStandardItem* parentItem) {
+        for (TreeNode* child : node->children) {
+            QStandardItem* childItem = new QStandardItem(child->name);
+            parentItem->appendRow(childItem);
+            addChildren(child, childItem);
+        }
+    };
+
+    addChildren(root, rootItem);
+
+    // 禁用header
+    treeView->header()->hide();
+
+    treeView->setModel(model);
+}
+
+
+void MainWindow::onTreeViewClicked(const QModelIndex& index) {
+    QString departmentName = index.data().toString();
+
+    if (dutySchedules.find(departmentName) != dutySchedules.end()) {
+        // 显示诊室的排班表
+        displayDutySchedule(workTableView, dutySchedules[departmentName]);
+    } else {
+        // 获取科室节点的所有子节点的排班表
+        TreeNode* departmentNode = getNodeByName(root, departmentName);
+        if (departmentNode) {
+            DutySchedule combinedSchedule = combineDutySchedules(departmentNode);
+            displayDutySchedule(workTableView, combinedSchedule);
+        }
+    }
+}
+TreeNode* MainWindow::getNodeByName(TreeNode* root, const QString& name) {
+    if (root->name == name) {
+        return root;
+    }
+
+    for (TreeNode* child : root->children) {
+        TreeNode* result = getNodeByName(child, name);
+        if (result) {
+            return result;
+        }
+    }
+
+    return nullptr;
+}
+
+DutySchedule MainWindow::combineDutySchedules(TreeNode* departmentNode) {
+    DutySchedule combinedSchedule;
+
+    // 遍历所有子节点
+    for (TreeNode* child : departmentNode->children) {
+        if (dutySchedules.find(child->name) != dutySchedules.end()) {
+            DutySchedule childSchedule = dutySchedules[child->name];
+
+            // 将子节点的排班表加到综合排班表上
+            for (int i = 0; i < 3; ++i) {
+                for (int j = 0; j < 7; ++j) {
+                    combinedSchedule.schedule[i][j] |= childSchedule.schedule[i][j];
+                }
+            }
+        }
+    }
+
+    return combinedSchedule;
 }
 
 void MainWindow::on_tableView_clicked(const QModelIndex &index)
@@ -1249,6 +1389,74 @@ void MainWindow::selectedPushButton(QPushButton *button)
 void MainWindow::deselectedPushButton(QPushButton *button)
 {
     button->setStyleSheet("QPushButton{ background:#1F1F1F; border: none; margin: 0px; padding: 0px; border-left:6px solid #1F1F1F; color:white; text-align: left;padding-left:24px;} QPushButton:hover{background:#333333;border: none;border-left:6px solid #333333;margin: 0px;padding: 0px;color:white;text-align: left;padding-left:24px;}");
+}
+
+DutySchedule MainWindow::createDutySchedule(int personCount, int offset) {
+    DutySchedule schedule;
+    std::vector<int> persons(personCount);
+    for (int i = 0; i < personCount; ++i) {
+        persons[i] = 1 << i;
+    }
+
+    // 遍历每个时间段和每个星期几
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 7; ++j) {
+            int person1 = persons[(i * 7 + j + offset) % personCount];
+            int person2 = persons[(i * 7 + j + offset + 1) % personCount];
+            schedule.schedule[i][j] = person1 | person2; // 每个时间段两人一起值班
+        }
+    }
+
+    return schedule;
+}
+
+
+
+void MainWindow::autoGenerateDutySchedules(std::map<QString, DutySchedule> &schedules, int personCount) {
+    int offset = 0;
+    schedules["诊室1"] = createDutySchedule(personCount, offset+=2);
+    schedules["诊室2"] = createDutySchedule(personCount, offset+=2);
+    schedules["诊室3"] = createDutySchedule(personCount, offset+=2);
+    schedules["诊室4"] = createDutySchedule(personCount, offset+=2);
+    schedules["诊室5"] = createDutySchedule(personCount, offset+=2);
+    schedules["诊室6"] = createDutySchedule(personCount, offset+=2);
+    schedules["诊室7"] = createDutySchedule(personCount, offset+=2);
+    schedules["诊室8"] = createDutySchedule(personCount, offset+=2);
+    schedules["药房"] = createDutySchedule(personCount, offset+=2);
+    schedules["处置室"] = createDutySchedule(personCount, offset+=2);
+}
+
+void MainWindow::displayDutySchedule(QTableView* tableView, const DutySchedule& schedule) {
+    QStandardItemModel* model = new QStandardItemModel;
+
+    model->setHorizontalHeaderLabels({"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"});
+    model->setVerticalHeaderLabels({"9:00-13:00", "13:00-17:00", "17:00-21:00"});
+
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 7; ++j) {
+            std::bitset<32> duty = schedule.schedule[i][j];
+            QStringList people;
+            for (int k = 0; k < 32; ++k) {
+                if (duty.test(k)) {
+                    people << QString("人员%1").arg(k+1);
+                }
+            }
+            QStandardItem* item = new QStandardItem(people.join(", "));
+            model->setItem(i, j, item);
+        }
+    }
+
+    tableView->setModel(model);
+
+    // 获取总高度并计算每行高度
+    int totalHeight = tableView->height();
+    int rowCount = model->rowCount();
+    int rowHeight = totalHeight / rowCount;
+
+    // 设置每行高度
+    for (int i = 0; i < rowCount; ++i) {
+        tableView->setRowHeight(i, rowHeight);
+    }
 }
 
 void MainWindow::on_pushButton_6_clicked()

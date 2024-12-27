@@ -103,11 +103,15 @@ QLineEdit
       <font>
        <family>Segoe UI</family>
        <pointsize>13</pointsize>
-       <bold>true</bold>
+       <italic>false</italic>
+       <bold>false</bold>
       </font>
      </property>
+     <property name="styleSheet">
+      <string notr="true">font:  &quot;华文中宋&quot;;</string>
+     </property>
      <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-size:18pt;&quot;&gt;医疗管理系统&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-size:18pt; font-weight:700;&quot;&gt;医疗管理系统&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
     </widget>
     <widget class="QLabel" name="label_3">
@@ -474,8 +478,12 @@ QLineEdit
       <font>
        <family>Segoe UI</family>
        <pointsize>13</pointsize>
-       <bold>true</bold>
+       <italic>false</italic>
+       <bold>false</bold>
       </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">font:  &quot;华文中宋&quot;;</string>
      </property>
      <property name="text">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-size:14pt;&quot;&gt;旗山校区&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -628,7 +636,7 @@ color:#EB0000;
 </string>
     </property>
     <property name="currentIndex">
-     <number>3</number>
+     <number>4</number>
     </property>
     <widget class="QWidget" name="searchWidget">
      <property name="styleSheet">
@@ -1274,6 +1282,9 @@ background:white;
         <height>22</height>
        </rect>
       </property>
+      <property name="styleSheet">
+       <string notr="true">font: 9pt &quot;华文中宋&quot;;</string>
+      </property>
       <property name="editable">
        <bool>false</bool>
       </property>
@@ -1348,163 +1359,7 @@ background:white;
 }</string>
       </property>
       <property name="text">
-       <string>刷新</string>
-      </property>
-     </widget>
-     <widget class="QTableView" name="updateTableView">
-      <property name="geometry">
-       <rect>
-        <x>32</x>
-        <y>115</y>
-        <width>761</width>
-        <height>351</height>
-       </rect>
-      </property>
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="focusPolicy">
-       <enum>Qt::FocusPolicy::NoFocus</enum>
-      </property>
-      <property name="autoFillBackground">
-       <bool>false</bool>
-      </property>
-      <property name="frameShape">
-       <enum>QFrame::Shape::NoFrame</enum>
-      </property>
-      <property name="horizontalScrollBarPolicy">
-       <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
-      </property>
-      <property name="sizeAdjustPolicy">
-       <enum>QAbstractScrollArea::SizeAdjustPolicy::AdjustIgnored</enum>
-      </property>
-      <property name="editTriggers">
-       <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
-      </property>
-      <property name="tabKeyNavigation">
-       <bool>false</bool>
-      </property>
-      <property name="showDropIndicator" stdset="0">
-       <bool>false</bool>
-      </property>
-      <property name="dragDropOverwriteMode">
-       <bool>false</bool>
-      </property>
-      <property name="alternatingRowColors">
-       <bool>true</bool>
-      </property>
-      <property name="selectionMode">
-       <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
-      </property>
-      <property name="selectionBehavior">
-       <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
-      </property>
-      <property name="textElideMode">
-       <enum>Qt::TextElideMode::ElideNone</enum>
-      </property>
-      <property name="showGrid">
-       <bool>false</bool>
-      </property>
-      <property name="gridStyle">
-       <enum>Qt::PenStyle::NoPen</enum>
-      </property>
-      <property name="cornerButtonEnabled">
-       <bool>false</bool>
-      </property>
-      <attribute name="horizontalHeaderVisible">
-       <bool>false</bool>
-      </attribute>
-      <attribute name="horizontalHeaderMinimumSectionSize">
-       <number>30</number>
-      </attribute>
-      <attribute name="horizontalHeaderDefaultSectionSize">
-       <number>120</number>
-      </attribute>
-     </widget>
-     <widget class="QLabel" name="label_26">
-      <property name="geometry">
-       <rect>
-        <x>130</x>
-        <y>90</y>
-        <width>121</width>
-        <height>34</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <family>华文中宋</family>
-        <pointsize>12</pointsize>
-        <bold>false</bold>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">#label_26
-{
-	color:white;
-	background:#11110E;
-padding-left:10px;
-}</string>
-      </property>
-      <property name="text">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;感冒发热科&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_27">
-      <property name="geometry">
-       <rect>
-        <x>250</x>
-        <y>90</y>
-        <width>121</width>
-        <height>34</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <family>华文中宋</family>
-        <pointsize>12</pointsize>
-        <bold>false</bold>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">#label_27
-{
-	color:white;
-	background:#11110E;
-	padding-left:5px;
-}</string>
-      </property>
-      <property name="text">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;内科&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_28">
-      <property name="geometry">
-       <rect>
-        <x>30</x>
-        <y>90</y>
-        <width>763</width>
-        <height>34</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <pointsize>10</pointsize>
-        <bold>true</bold>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">#label_28
-{
-	color:white;
-	background:#11110E;
-	padding-left:3px;
-}</string>
-      </property>
-      <property name="text">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       <string>调班</string>
       </property>
      </widget>
      <widget class="QLabel" name="updateEmpID">
@@ -1531,142 +1386,6 @@ font-style:italic;</string>
        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
       </property>
      </widget>
-     <widget class="QLabel" name="label_35">
-      <property name="geometry">
-       <rect>
-        <x>369</x>
-        <y>90</y>
-        <width>121</width>
-        <height>34</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <family>华文中宋</family>
-        <pointsize>12</pointsize>
-        <bold>false</bold>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">#label_35{
-	color:white;
-	background:#11110E;
-	padding-left:5px;
-}</string>
-      </property>
-      <property name="text">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;外科&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_36">
-      <property name="geometry">
-       <rect>
-        <x>490</x>
-        <y>90</y>
-        <width>100</width>
-        <height>34</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <family>华文中宋</family>
-        <pointsize>12</pointsize>
-        <bold>false</bold>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">#label_35{
-	color:white;
-	background:#11110E;
-	padding-left:5px;
-}</string>
-      </property>
-      <property name="text">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;药室&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_37">
-      <property name="geometry">
-       <rect>
-        <x>590</x>
-        <y>90</y>
-        <width>100</width>
-        <height>34</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <family>华文中宋</family>
-        <pointsize>12</pointsize>
-        <bold>false</bold>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">#label_35{
-	color:white;
-	background:#11110E;
-	padding-left:5px;
-}</string>
-      </property>
-      <property name="text">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;急诊&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_38">
-      <property name="geometry">
-       <rect>
-        <x>690</x>
-        <y>90</y>
-        <width>100</width>
-        <height>34</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <family>华文中宋</family>
-        <pointsize>12</pointsize>
-        <bold>false</bold>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">#label_35{
-	color:white;
-	background:#11110E;
-	padding-left:5px;
-}</string>
-      </property>
-      <property name="text">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;处理室&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_40">
-      <property name="geometry">
-       <rect>
-        <x>30</x>
-        <y>90</y>
-        <width>101</width>
-        <height>34</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <family>华文中宋</family>
-        <pointsize>12</pointsize>
-        <bold>false</bold>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">#label_26
-{
-	color:white;
-	background:#11110E;
-padding-left:10px;
-}</string>
-      </property>
-      <property name="text">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;诊室/日期&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-      </property>
-     </widget>
      <widget class="QLabel" name="labeltologin">
       <property name="geometry">
        <rect>
@@ -1680,35 +1399,44 @@ padding-left:10px;
        <string>请先登录</string>
       </property>
      </widget>
-     <widget class="QLabel" name="labeltologin_5">
+     <widget class="QTreeView" name="treeView">
       <property name="geometry">
        <rect>
-        <x>130</x>
-        <y>10</y>
-        <width>561</width>
-        <height>81</height>
+        <x>50</x>
+        <y>50</y>
+        <width>181</width>
+        <height>431</height>
        </rect>
       </property>
       <property name="styleSheet">
-       <string notr="true">font: 28pt &quot;华文中宋&quot;;</string>
+       <string notr="true">font:11pt &quot;华文中宋&quot;;</string>
       </property>
-      <property name="text">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;今日诊室排班及到班情况&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <property name="editTriggers">
+       <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+      </property>
+      <property name="showDropIndicator" stdset="0">
+       <bool>true</bool>
       </property>
      </widget>
-     <zorder>pushButton_7</zorder>
-     <zorder>updateTableView</zorder>
-     <zorder>updateEmpID</zorder>
-     <zorder>labeltologin</zorder>
-     <zorder>label_28</zorder>
-     <zorder>label_36</zorder>
-     <zorder>label_26</zorder>
-     <zorder>label_40</zorder>
-     <zorder>label_37</zorder>
-     <zorder>label_38</zorder>
-     <zorder>label_35</zorder>
-     <zorder>label_27</zorder>
-     <zorder>labeltologin_5</zorder>
+     <widget class="QTableView" name="workTableView">
+      <property name="geometry">
+       <rect>
+        <x>260</x>
+        <y>50</y>
+        <width>501</width>
+        <height>431</height>
+       </rect>
+      </property>
+      <property name="layoutDirection">
+       <enum>Qt::LayoutDirection::LeftToRight</enum>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">font: 11pt &quot;华文中宋&quot;;</string>
+      </property>
+      <property name="editTriggers">
+       <set>QAbstractItemView::EditTrigger::NoEditTriggers</set>
+      </property>
+     </widget>
     </widget>
     <widget class="QWidget" name="deleteEmpWidget">
      <property name="styleSheet">
