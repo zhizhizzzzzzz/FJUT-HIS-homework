@@ -29,8 +29,6 @@ SOURCES += \
     login.cpp \
         main.cpp \
         mainwindow.cpp \
-    employeeinfo.cpp \
-    employeedbutils.cpp \
     techused.cpp \
     about.cpp
 
@@ -39,14 +37,12 @@ HEADERS += \
     graph.h \
     login.h \
         mainwindow.h \
-    employeeinfo.h \
     techused.h \
     about.h
 
 FORMS += \
     login.ui \
         mainwindow.ui \
-    employeeinfo.ui \
     techused.ui \
     about.ui
 

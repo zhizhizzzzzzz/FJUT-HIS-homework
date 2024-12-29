@@ -47,7 +47,7 @@ class MainWindow;
 
 struct TreeNode {
     QString name;
-    QList<TreeNode*> children;
+    QList<TreeNode*> children = {};
 };
 
 struct DutySchedule {
@@ -65,21 +65,7 @@ struct DataItem {
     DataItem *next;
     DataItem *ptr = nullptr; // 指向链表节点的指针
     QString toString() const { return "ID: " + ID + ";" + "Name: " + name + ";" + "Age: " + age + ";" + "Sex: " + sex + ";" + "What happened: " + whathappend + ";" + "Date: " + date + ";" + "If Accept: " + ifaccept;}
-};
-
-struct DataQueueItem {
-
-    QString ID;
-    QString name;
-    QString age;
-    QString sex;
-    QString whathappend;
-    QString date;
-    QString ifaccept;
-    DataQueueItem *next;
-    QString toString() const { return "ID: " + ID + ";" + "Name: " + name + ";" + "Age: " + age + ";" + "Sex: " + sex + ";" + "What happened: " + whathappend + ";" + "Date: " + date + ";" + "If Accept: " + ifaccept;}
-
-    bool operator>(const DataQueueItem& other) const {
+    bool operator>(const DataItem& other) const {
         if (ifaccept.toInt() != other.ifaccept.toInt()) {
             return ifaccept.toInt() < other.ifaccept.toInt();
         }
@@ -87,28 +73,53 @@ struct DataQueueItem {
         // 日期时间，格式为 "xxxx-xx-xx-xx:xx"
         QDateTime thisDateTime = QDateTime::fromString(this->date, "yyyy-MM-dd-HH:mm");
         QDateTime otherDateTime = QDateTime::fromString(other.date, "yyyy-MM-dd-HH:mm");
-        qDebug() << "Comparing:" << thisDateTime << "with" << otherDateTime << (thisDateTime < otherDateTime);
+        // qDebug() << "Comparing:" << thisDateTime << "with" << otherDateTime << (thisDateTime < otherDateTime);
         return thisDateTime > otherDateTime;
     }
 };
+
+// struct DataQueueItem {
+
+//     QString ID;
+//     QString name;
+//     QString age;
+//     QString sex;
+//     QString whathappend;
+//     QString date;
+//     QString ifaccept;
+//     // DataQueueItem *next;
+//     QString toString() const { return "ID: " + ID + ";" + "Name: " + name + ";" + "Age: " + age + ";" + "Sex: " + sex + ";" + "What happened: " + whathappend + ";" + "Date: " + date + ";" + "If Accept: " + ifaccept;}
+
+//     bool operator>(const DataQueueItem& other) const {
+//         if (ifaccept.toInt() != other.ifaccept.toInt()) {
+//             return ifaccept.toInt() < other.ifaccept.toInt();
+//         }
+
+//         // 日期时间，格式为 "xxxx-xx-xx-xx:xx"
+//         QDateTime thisDateTime = QDateTime::fromString(this->date, "yyyy-MM-dd-HH:mm");
+//         QDateTime otherDateTime = QDateTime::fromString(other.date, "yyyy-MM-dd-HH:mm");
+//         qDebug() << "Comparing:" << thisDateTime << "with" << otherDateTime << (thisDateTime < otherDateTime);
+//         return thisDateTime > otherDateTime;
+//     }
+// };
 
 class PriorityQueue {
 
 public:
     PriorityQueue() : headQueueItem(nullptr) {}
 
-    void push(const DataQueueItem& item);
-    DataQueueItem pop();
+    void push(const DataItem& item);
+    DataItem pop();
     bool empty() const;
     void remove(const QString& id);
-    DataQueueItem* find(const QString& id) ;
-    void update(const DataQueueItem& newItem);
-    QList<DataQueueItem> getAll() const ;
+    DataItem* find(const QString& id) ;
+    void update(const DataItem& newItem);
+    QList<DataItem> getAll() const ;
 private:
-    std::vector<DataQueueItem> heap;
+    std::vector<DataItem> heap;
     void siftUp(size_t index);
     void siftDown(size_t index);
-    DataQueueItem *headQueueItem = nullptr; // 链表头指针
+    DataItem *headQueueItem = nullptr; // 链表头指针
 
 };
 
@@ -159,25 +170,7 @@ public:
 
     void on_updateEmpButton_clicked();
 
-    void on_pushButton_5_clicked();
-
-    void on_pushButton_2_clicked();
-
-    void on_empDept_currentIndexChanged(const int &index);
-
     void on_deleteEmpButton_clicked();
-
-    void on_tableView_clicked(const QModelIndex &index);
-
-    void on_tableView_doubleClicked(const QModelIndex &index);
-
-    void on_pushButton_7_clicked();
-
-    void on_updateTableView_doubleClicked(const QModelIndex &index);
-
-    void on_pushButton_8_clicked();
-
-    void on_deleteTableView_doubleClicked(const QModelIndex &index);
 
     void on_searchTextBox_returnPressed();
 
@@ -188,8 +181,6 @@ public:
     void deselectedPushButton(QPushButton *button);
 
     void on_techButton_clicked();
-
-    void on_tableView_activated(const QModelIndex &index);
 
     void on_aboutButton_clicked();
 
@@ -208,7 +199,6 @@ public:
     void on_pushButton_15_clicked();
     void on_pushButton_16_clicked();
     void on_pushButton_17_clicked();
-    void saveQueueDataToFile(const QString &filename);
     void addQueueItemAndRefreshTableView() ;
     void initializeTableView();
     void updateChartView(int type);
@@ -220,12 +210,13 @@ public:
 private:
     TreeNode* getNodeByName(TreeNode* root, const QString& name);
     DutySchedule combineDutySchedules(TreeNode* departmentNode);
+    void setCurrentTime(QLabel* label);
 
     Ui::MainWindow *ui;
     bool isMouseDown = false;
     QTcpSocket *tcpSocket;
     DataItem *headItem = nullptr; // 链表头指针
-    DataQueueItem *headQueueItem = nullptr; // 链表头指针
+    // DataQueueItem *headQueueItem = nullptr; // 链表头指针
     QTcpServer *tcpServer;
     login *loginDialog;
     Graphlnk<int, int> graph;
@@ -233,7 +224,7 @@ private:
     int *path;
     DutySchedule createDutySchedule(int personCount, int offset);
     void displayDutySchedule(QTableView* tableView, const DutySchedule& schedule);
-    QList<DataQueueItem> displayList;
+    QList<DataItem> displayList;
     void populateTreeView(QTreeView *treeView, TreeNode *root);
     TreeNode* root;
     QTableView* workTableView;

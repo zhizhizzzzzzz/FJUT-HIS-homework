@@ -5,6 +5,9 @@
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QStandardItemModel>
+#include <QLabel>
+#include <QDateTime>
+
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent),
 ui(new Ui::MainWindow),
@@ -74,7 +77,7 @@ graph({
     connect(ui->lineEditSearch, &QLineEdit::textChanged, this, &MainWindow::on_searchTextBox_textChanged);
 
     connect(ui->chartComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onChartComboBoxIndexChanged(int)));
-
+    setCurrentTime(ui->label_58);
 }
 
 MainWindow::~MainWindow()
@@ -86,6 +89,11 @@ MainWindow::~MainWindow()
 
 
 void MainWindow::editCurrentRow() {
+
+    DataItem *current = headItem;
+    // DataItem *qcurrent = headQueueItem;
+    loadDataIntoQueue();
+
     // 获取当前选中的行和列
     QModelIndex index = ui->tableView->currentIndex();
     if (!index.isValid())
@@ -123,53 +131,40 @@ void MainWindow::editCurrentRow() {
             nullptr,
             nullptr
         };
-        DataQueueItem cpqval = {
-            model->item(row, 0)->text(),
-            model->item(row, 1)->text(),
-            model->item(row, 2)->text(),
-            model->item(row, 3)->text(),
-            model->item(row, 4)->text(),
-            model->item(row, 5)->text(),
-            ifacceptStr,
-            nullptr
-        };
         DataItem *hitDI = nullptr;
-        DataQueueItem *hitDQI = nullptr;
+        // DataItem *hitDQI = nullptr;
 
-        DataItem *current = headItem;
-        DataQueueItem *qcurrent = headQueueItem;
-        printLinkedList(current);
-        qDebug()<<"------------------------";
-        printLinkedList(qcurrent);
         while (current != nullptr) {
-            qDebug() << current->toString()<<"---COMP---"<< cpval.toString();
+            // qDebug() << current->toString()<<"---COMP---"<< cpval.toString();
             bool is_same = compareDataItems(*current,cpval);
-            qDebug() << "is_same = "<<is_same;
+            // qDebug() << "is_same = "<<is_same;
             if (is_same){
                 hitDI = current;
                 break;
             }
             current=current->next;
         }
-        while (qcurrent != nullptr) {
-            qDebug() << qcurrent->toString()<<"---COMPQ---"<< cpval.toString();
-            bool is_same = compareDataItems(*qcurrent,cpval);
-            qDebug() << "is_same_queue = "<<is_same;
-            if (is_same){
-                hitDQI = qcurrent;
-                break;
-            }
-            qcurrent=qcurrent->next;
-        }
-        if(hitDI!=nullptr&&hitDQI!=nullptr){
-            hitDI->whathappend=newWhatHappend;
-            hitDQI->whathappend=newWhatHappend;
+        // while (qcurrent != nullptr) {
+        //     qDebug() << qcurrent->toString()<<"---COMPQ---"<< cpval.toString();
+        //     bool is_same = compareDataItems(*qcurrent,cpval);
+        //     qDebug() << "is_same_queue = "<<is_same;
+        //     if (is_same){
+        //         hitDQI = qcurrent;
+        //         break;
+        //     }
+        //     qcurrent=qcurrent->next;
+        // }
+        if(hitDI!=nullptr){
+            hitDI->whathappend=newWhatHappend.trimmed();
+            hitDI->ifaccept="-1";
+            // hitDQI->whathappend=newWhatHappend;
             saveDataToFile(DATA_PATH("data.txt"));
             displayList.clear();
             loadDataIntodeleteTableView();
             loadDataIntoQueue();
             loadDataIntoTableView();
             updateChartView(ui->chartComboBox->currentIndex());
+            ui->deptLabel->setText(QString::asprintf("%03d", ui->deptLabel->text().toInt() + 1));
         }
     }
 }
@@ -230,22 +225,6 @@ void MainWindow::newConnection()
     connect(tcpSocket, &QTcpSocket::readyRead, this, &MainWindow::readTcpData);
     qDebug() << "New connection from:" << tcpSocket->peerAddress().toString();
 }
-void MainWindow::saveQueueDataToFile(const QString &filename) {
-    QFile file(filename);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Text )) {
-        QTextStream out(&file);
-        DataQueueItem *current = headQueueItem;
-        while (current != nullptr) {
-            out << current->ID << " " << current->name << " " << current->age << " " << current->sex << " "
-                << current->whathappend << " " << current->date << " " << current->ifaccept<<"\n";
-            current = current->next;
-        }
-        file.close();
-    } else {
-        QMessageBox::warning(this, tr("Write Error"), tr("Cannot open file for writing:\n%1").arg(file.errorString()));
-    }
-}
-
 
 void MainWindow::saveDataToFile(const QString &filename) {
     QFile file(filename);
@@ -368,7 +347,7 @@ void MainWindow::addQueueItemAndRefreshTableView() {
     model->clear(); // 清除现有数据
 
     // 使用 queueData 来填充模型
-    for (const DataQueueItem &item : displayList) {
+    for (const DataItem &item : displayList) {
         QList<QStandardItem *> items;
         items << new QStandardItem(item.ID)
               << new QStandardItem(item.name)
@@ -410,13 +389,13 @@ void MainWindow::addQueueItemAndRefreshTableView() {
 }
 
     // 增加元素
-void PriorityQueue::push(const DataQueueItem& item) {
-        // DataQueueItem* newItem = new DataQueueItem(item);
+void PriorityQueue::push(const DataItem& item) {
+        // DataItem* newItem = new DataItem(item);
         // if (headQueueItem == nullptr || *newItem < *headQueueItem) {
         //     newItem->next = headQueueItem;
         //     headQueueItem = newItem;
         // } else {
-        //     DataQueueItem* current = headQueueItem;
+        //     DataItem* current = headQueueItem;
         //     while (current->next != nullptr && !(*newItem < *(current->next))) {
         //         current = current->next;
         //     }
@@ -429,48 +408,8 @@ void PriorityQueue::push(const DataQueueItem& item) {
     //Todo:把库改成自己实现的链队push
 
     // 删除元素
-void PriorityQueue::remove(const QString& id) {
-        DataQueueItem* current = headQueueItem;
-        DataQueueItem* prev = nullptr;
-        while (current != nullptr && current->ID != id) {
-            prev = current;
-            current = current->next;
-        }
-        if (current != nullptr) {
-            if (prev != nullptr) {
-                prev->next = current->next;
-            } else {
-                headQueueItem = current->next;
-            }
-            delete current;
-        }
-    }
 
     // 更新元素
-    void PriorityQueue::update(const DataQueueItem& newItem) {
-        remove(newItem.ID);
-        push(newItem);
-    }
-
-    // 查找元素
-    DataQueueItem* PriorityQueue::find(const QString& id) {
-        DataQueueItem* current = headQueueItem;
-        while (current != nullptr && current->ID != id) {
-            current = current->next;
-        }
-        return current;
-    }
-
-    // 获取所有元素
-    QList<DataQueueItem> PriorityQueue::getAll() const {
-        QList<DataQueueItem> items;
-        DataQueueItem* current = headQueueItem;
-        while (current != nullptr) {
-            items.append(*current);
-            current = current->next;
-        }
-        return items;
-    }
 
 void PriorityQueue::siftUp(size_t index) {
     while (index > 0) {
@@ -498,12 +437,12 @@ void PriorityQueue::siftDown(size_t index) {
     }
 }
 
-DataQueueItem PriorityQueue::pop() {
+DataItem PriorityQueue::pop() {
     if (heap.empty()) {
         throw std::runtime_error("Queue is empty");
     }
     std::swap(heap.front(), heap.back());
-    DataQueueItem item = heap.back();
+    DataItem item = heap.back();
     heap.pop_back();
     siftDown(0);
     return item;
@@ -527,7 +466,7 @@ void MainWindow::loadDataIntoQueue() {
         line = in.readLine();
         QStringList fields = line.split(" ", Qt::SkipEmptyParts);
         if (fields.size() == 7) {
-            DataQueueItem item;
+            DataItem item;
             item.ID = fields[0];
             item.name = fields[1];
             item.age = fields[2];
@@ -541,7 +480,7 @@ void MainWindow::loadDataIntoQueue() {
     file.close();
 
     while (!pq.empty()) {
-        DataQueueItem item = pq.pop();
+        DataItem item = pq.pop();
         if (item.ifaccept.toInt() == 0 || item.ifaccept.toInt() == 1) {
             displayList.append(item);
         }
@@ -580,6 +519,7 @@ void MainWindow::loadTotalData() {
             addDataItem(item); // 使用头插法添加到链表
         }
     }
+
 
     file.close();
 
@@ -697,7 +637,9 @@ void MainWindow::loadDataIntodeleteTableView() {
 
 
 // 处理错误
-void MainWindow::handleError(QAbstractSocket::SocketError socketError) {
+void MainWindow::handleError(QAbstractSocket::SocketError socketError)
+{
+    qDebug()<<socketError;
     QMessageBox::critical(this, tr("Socket Error"), tcpSocket->errorString());
 }
 
@@ -727,6 +669,7 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
 
 void MainWindow::mouseReleaseEvent(QMouseEvent *event)
 {
+    qDebug()<<event;
     isMouseDown = false;
 }
 
@@ -800,7 +743,7 @@ void MainWindow::updateChartView(int type){
     }
     case 2:{
         title = "诊断分布情况";
-        labels = {"咳嗽","发热","感冒","肺炎","哮喘","晕倒"}; // TODO: 加一个医生可以手动添加
+        labels = {"咳嗽","发热","感冒","肺炎","哮喘","晕倒","便秘","胃痛","心悸","过敏"}; // TODO: 加一个医生可以手动添加
         len = labels.size();
         counters = std::vector<int>(len,0);
         while (current != nullptr) {
@@ -958,36 +901,36 @@ void MainWindow::on_pushButton_17_clicked() {
                 currentItem = currentItem->next;
             }
 
-            // 遍历队列链表以找到对应的节点
-            DataQueueItem *currentQueueItem = headQueueItem; // 使用新的变量currentQueueItem
-            bool foundQueueItem = false;
-            while (currentQueueItem != nullptr) {
-                // 比较链表节点的数据与模型中选中行的数据是否一致
-                if (currentQueueItem->ID == model->item(row, 0)->text() &&
-                    currentQueueItem->name == model->item(row, 1)->text() &&
-                    currentQueueItem->age == model->item(row, 2)->text() &&
-                    currentQueueItem->sex == model->item(row, 3)->text() &&
-                    currentQueueItem->whathappend == model->item(row, 4)->text() &&
-                    currentQueueItem->date == model->item(row, 5)->text() &&
-                    currentQueueItem->ifaccept == model->item(row, 6)->text()) {
-                    // 更新链表中的节点
-                    currentQueueItem->ID = fields[0];
-                    currentQueueItem->name = fields[1];
-                    currentQueueItem->age = fields[2];
-                    currentQueueItem->sex = fields[3];
-                    currentQueueItem->whathappend = fields[4];
-                    currentQueueItem->date = fields[5];
-                    currentQueueItem->ifaccept = fields[6];
-                    foundQueueItem = true;
-                    break;
-                }
-                currentQueueItem = currentQueueItem->next;
-            }
-
-            // if (!foundItem || !foundQueueItem) {
-            //     QMessageBox::warning(this, tr("Update Error"), tr("未找到匹配的数据项"));
-            //     continue; // 未找到匹配的数据项，跳过当前行
+            // // 遍历队列链表以找到对应的节点
+            // DataItem *currentQueueItem = headQueueItem; // 使用新的变量currentQueueItem
+            // bool foundQueueItem = false;
+            // while (currentQueueItem != nullptr) {
+            //     // 比较链表节点的数据与模型中选中行的数据是否一致
+            //     if (currentQueueItem->ID == model->item(row, 0)->text() &&
+            //         currentQueueItem->name == model->item(row, 1)->text() &&
+            //         currentQueueItem->age == model->item(row, 2)->text() &&
+            //         currentQueueItem->sex == model->item(row, 3)->text() &&
+            //         currentQueueItem->whathappend == model->item(row, 4)->text() &&
+            //         currentQueueItem->date == model->item(row, 5)->text() &&
+            //         currentQueueItem->ifaccept == model->item(row, 6)->text()) {
+            //         // 更新链表中的节点
+            //         currentQueueItem->ID = fields[0];
+            //         currentQueueItem->name = fields[1];
+            //         currentQueueItem->age = fields[2];
+            //         currentQueueItem->sex = fields[3];
+            //         currentQueueItem->whathappend = fields[4];
+            //         currentQueueItem->date = fields[5];
+            //         currentQueueItem->ifaccept = fields[6];
+            //         foundQueueItem = true;
+            //         break;
+            //     }
+            //     currentQueueItem = currentQueueItem->next;
             // }
+
+            if (!foundItem) {
+                QMessageBox::warning(this, tr("Update Error"), tr("未找到匹配的数据项"));
+                continue; // 未找到匹配的数据项，跳过当前行
+            }
 
             // 更新模型中的数据
             model->setData(model->index(row, 0), fields[0]);
@@ -1063,7 +1006,7 @@ void MainWindow::refreshTableView() {
     // ui->tableView->setColumnWidth(6, 40);
     // ui->tableView->resizeRowsToContents();
     DataItem item;
-    DataQueueItem queueitem;
+    DataItem queueitem;
     loadTotalData(); // 加载数据
     loadDataIntoQueue();
     loadDataIntoTableView();
@@ -1092,16 +1035,16 @@ void MainWindow::on_pushButton_15_clicked() {
         item.ifaccept = fields[6].replace("\n","");
         item.next = nullptr;
 
-        DataQueueItem queueitem;
+        // DataItem queueitem;
 
-        queueitem.ID = fields[0];
-        queueitem.name = fields[1];
-        queueitem.age = fields[2];
-        queueitem.sex = fields[3];
-        queueitem.whathappend = fields[4];
-        queueitem.date = fields[5];
-        queueitem.ifaccept = fields[6].replace("\n","");
-        queueitem.next = nullptr;
+        // queueitem.ID = fields[0];
+        // queueitem.name = fields[1];
+        // queueitem.age = fields[2];
+        // queueitem.sex = fields[3];
+        // queueitem.whathappend = fields[4];
+        // queueitem.date = fields[5];
+        // queueitem.ifaccept = fields[6].replace("\n","");
+        // queueitem.next = nullptr;
 
 
         qDebug() << "Parsed data:" << item.ID << item.name << item.age << item.sex << item.whathappend << item.date << item.ifaccept;
@@ -1125,8 +1068,8 @@ void MainWindow::on_pushButton_15_clicked() {
         }
         qDebug() << "load OK!";
 
-        qDebug() << queueitem.ID << queueitem.name << queueitem.age << queueitem.sex << queueitem.whathappend << queueitem.date << queueitem.ifaccept;
-        displayList.append(queueitem);
+        // qDebug() << queueitem.ID << queueitem.name << queueitem.age << queueitem.sex << queueitem.whathappend << queueitem.date << queueitem.ifaccept;
+        displayList.append(item);
 
         displayList.clear();
         loadDataIntoQueue();
@@ -1176,9 +1119,17 @@ void MainWindow::on_pushButton_3_clicked() {
 }
 
 
+
+void MainWindow::setCurrentTime(QLabel* label) {
+    QDateTime currentDateTime = QDateTime::currentDateTime();
+    QString formattedTime = currentDateTime.toString("yyyy年MM月dd日HH:mm");
+    label->setText(formattedTime);
+}
+
 void MainWindow::on_searchTextBox_textChanged(const QString &text) {
     if (text.isEmpty()) {
-        loadDataIntoTableView();
+        loadDataIntoQueue();
+        loadDataIntodeleteTableView();
         return;
     }
     QStandardItemModel *model = new QStandardItemModel(this);
@@ -1230,7 +1181,7 @@ void MainWindow::on_minimizeButton_clicked()
 
 void MainWindow::on_pushButton_clicked()
 {
-    ui->searchTextBox->setText("");
+    // ui->searchTextBox->setText("");
 }
 
 void MainWindow::on_attendanceButton_clicked()
@@ -1287,21 +1238,6 @@ void MainWindow::on_updateEmpButton_clicked()
     deselectedPushButton(ui->addEmpButton);
     updateChartView(ui->chartComboBox->currentIndex());
     ui->searchStackedWidget->setCurrentIndex(3);
-}
-
-void MainWindow::on_pushButton_5_clicked()
-{
-    // 空壳函数，用于处理事件
-}
-
-void MainWindow::on_pushButton_2_clicked()
-{
-    // 空壳函数，用于处理事件
-}
-
-void MainWindow::on_empDept_currentIndexChanged(const int &index)
-{
-    // 空壳函数，用于处理事件
 }
 
 
@@ -1429,36 +1365,6 @@ DutySchedule MainWindow::combineDutySchedules(TreeNode* departmentNode) {
     return combinedSchedule;
 }
 
-void MainWindow::on_tableView_clicked(const QModelIndex &index)
-{
-    // 空壳函数，用于处理事件
-}
-
-void MainWindow::on_tableView_doubleClicked(const QModelIndex &index)
-{
-    // 空壳函数，用于处理事件
-}
-
-void MainWindow::on_pushButton_7_clicked()
-{
-    // 空壳函数，用于处理事件
-}
-
-void MainWindow::on_updateTableView_doubleClicked(const QModelIndex &index)
-{
-    // 空壳函数，用于处理事件
-}
-
-void MainWindow::on_pushButton_8_clicked()
-{
-    // 空壳函数，用于处理事件
-}
-
-void MainWindow::on_deleteTableView_doubleClicked(const QModelIndex &index)
-{
-
-}
-
 void MainWindow::on_searchTextBox_returnPressed()
 {
     qDebug() << "Search";
@@ -1552,11 +1458,6 @@ void MainWindow::on_techButton_clicked()
     TechUsed *tech = new TechUsed(this);
     tech->setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
     tech->show();
-}
-
-void MainWindow::on_tableView_activated(const QModelIndex &index)
-{
-    // 空壳函数，用于处理事件
 }
 
 void MainWindow::on_aboutButton_clicked()
