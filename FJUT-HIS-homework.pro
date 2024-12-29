@@ -33,8 +33,6 @@ SOURCES += \
     about.cpp
 
 HEADERS += \
-    dijkstra.h \
-    graph.h \
     login.h \
         mainwindow.h \
     techused.h \

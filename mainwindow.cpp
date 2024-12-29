@@ -144,16 +144,6 @@ void MainWindow::editCurrentRow() {
             }
             current=current->next;
         }
-        // while (qcurrent != nullptr) {
-        //     qDebug() << qcurrent->toString()<<"---COMPQ---"<< cpval.toString();
-        //     bool is_same = compareDataItems(*qcurrent,cpval);
-        //     qDebug() << "is_same_queue = "<<is_same;
-        //     if (is_same){
-        //         hitDQI = qcurrent;
-        //         break;
-        //     }
-        //     qcurrent=qcurrent->next;
-        // }
         if(hitDI!=nullptr){
             hitDI->whathappend=newWhatHappend.trimmed();
             hitDI->ifaccept="-1";
@@ -388,68 +378,130 @@ void MainWindow::addQueueItemAndRefreshTableView() {
     qDebug() << "tabelview sent.";
 }
 
-    // 增加元素
-void PriorityQueue::push(const DataItem& item) {
-        // DataItem* newItem = new DataItem(item);
-        // if (headQueueItem == nullptr || *newItem < *headQueueItem) {
-        //     newItem->next = headQueueItem;
-        //     headQueueItem = newItem;
-        // } else {
-        //     DataItem* current = headQueueItem;
-        //     while (current->next != nullptr && !(*newItem < *(current->next))) {
-        //         current = current->next;
-        //     }
-        //     newItem->next = current->next;
-        //     current->next = newItem;
-        // }
-        heap.push_back(item);
-        siftUp(heap.size() - 1);
-    }
-    //Todo:把库改成自己实现的链队push
-
-    // 删除元素
-
-    // 更新元素
-
-void PriorityQueue::siftUp(size_t index) {
-    while (index > 0) {
-        size_t parent = (index - 1) / 2;
-        if (heap[index] > heap[parent]) {
-            std::swap(heap[index], heap[parent]);
-            index = parent;
-        } else {
-            break;
-        }
+void PriorityQueue::clear(HeapNode* node) {
+    if (node) {
+        clear(node->left);
+        clear(node->right);
+        delete node;
     }
 }
 
-void PriorityQueue::siftDown(size_t index) {
-    size_t left, right, smallest;
-    while ((left = 2 * index + 1) < heap.size()) {
-        right = left + 1;
-        smallest = (right < heap.size() && heap[right] >heap[left]) ? right : left;
-        if (heap[smallest] > heap[index]) {
-            std::swap(heap[index], heap[smallest]);
-            index = smallest;
+HeapNode* PriorityQueue::findLastParent() {
+    if (!root || size <= 1) return nullptr;
+    
+    size_t pos = size;
+    std::vector<bool> path;
+    
+    // Skip the last position (which is where we want to add)
+    pos = (pos - 1) / 2;  // Get parent position
+    
+    // Build path to parent
+    while (pos > 1) {
+        path.push_back(pos % 2 == 0);
+        pos /= 2;
+    }
+    
+    HeapNode* current = root;
+    for (auto it = path.rbegin(); it != path.rend() && current; ++it) {
+        current = *it ? current->right : current->left;
+    }
+    
+    return current;
+}
+
+void PriorityQueue::siftUp(HeapNode* node) {
+    if (!node || !node->parent) return;
+    
+    while (node->parent && node->data > node->parent->data) {
+        std::swap(node->data, node->parent->data);
+        node = node->parent;
+    }
+}
+
+void PriorityQueue::siftDown(HeapNode* node) {
+    if (!node) return;
+    
+    while (true) {
+        HeapNode* largest = node;
+        
+        if (node->left && node->left->data > largest->data) {
+            largest = node->left;
+        }
+        if (node->right && node->right->data > largest->data) {
+            largest = node->right;
+        }
+        
+        if (largest == node) break;
+        
+        std::swap(node->data, largest->data);
+        node = largest;
+    }
+}
+
+void PriorityQueue::push(const DataItem& item) {
+    HeapNode* newNode = new HeapNode(item);
+    size++;
+    
+    if (!root) {
+        root = newNode;
+        return;
+    }
+    
+    HeapNode* parent = findLastParent();
+    if (!parent) {
+        // Special case: adding second node
+        newNode->parent = root;
+        root->left = newNode;
+    } else {
+        newNode->parent = parent;
+        if (!parent->left) {
+            parent->left = newNode;
         } else {
-            break;
+            parent->right = newNode;
         }
     }
+    
+    siftUp(newNode);
 }
 
 DataItem PriorityQueue::pop() {
-    if (heap.empty()) {
+    if (!root) {
         throw std::runtime_error("Queue is empty");
     }
-    std::swap(heap.front(), heap.back());
-    DataItem item = heap.back();
-    heap.pop_back();
-    siftDown(0);
-    return item;
-}
-
-bool PriorityQueue::empty() const {
-    return heap.empty();
+    
+    DataItem result = root->data;
+    
+    if (!root->left && !root->right) {
+        // Only one node
+        delete root;
+        root = nullptr;
+        size = 0;
+        return result;
+    }
+    
+    // Find the last node
+    HeapNode* parent = findLastParent();
+    HeapNode* last = parent ? (parent->right ? parent->right : parent->left) : root->left;
+    
+    // Copy data from last node to root
+    root->data = last->data;
+    
+    // Remove last node
+    if (parent) {
+        if (parent->right == last) {
+            parent->right = nullptr;
+        } else {
+            parent->left = nullptr;
+        }
+    } else {
+        root->left = nullptr;
+    }
+    
+    delete last;
+    size--;
+    
+    siftDown(root);
+    return result;
 }
 
 void MainWindow::loadDataIntoQueue() {
@@ -458,39 +510,46 @@ void MainWindow::loadDataIntoQueue() {
         QMessageBox::warning(this, tr("Read Error"), tr("Cannot open file:\n%1").arg(file.errorString()));
         return;
     }
+    
+    displayList.clear();  // Clear existing items
     QTextStream in(&file);
     QString line;
-    PriorityQueue pq;
-
-    while (!in.atEnd()) {
-        line = in.readLine();
-        QStringList fields = line.split(" ", Qt::SkipEmptyParts);
-        if (fields.size() == 7) {
-            DataItem item;
-            item.ID = fields[0];
-            item.name = fields[1];
-            item.age = fields[2];
-            item.sex = fields[3];
-            item.whathappend = fields[4];
-            item.date = fields[5];
-            item.ifaccept = fields[6];
-            pq.push(item);
+    PriorityQueue pq;  // Create a new priority queue
+    
+    try {
+        while (!in.atEnd()) {
+            line = in.readLine();
+            QStringList fields = line.split(" ", Qt::SkipEmptyParts);
+            if (fields.size() == 7) {
+                DataItem item;
+                item.ID = fields[0];
+                item.name = fields[1];
+                item.age = fields[2];
+                item.sex = fields[3];
+                item.whathappend = fields[4];
+                item.date = fields[5];
+                item.ifaccept = fields[6];
+                pq.push(item);
+            }
         }
+        
+        while (!pq.empty()) {
+            try {
+                DataItem item = pq.pop();
+                if (item.ifaccept.toInt() == 0 || item.ifaccept.toInt() == 1) {
+                    displayList.append(item);
+                }
+            } catch (const std::runtime_error& e) {
+                qDebug() << "Error popping item:" << e.what();
+                break;
+            }
+        }
+    } catch (const std::exception& e) {
+        qDebug() << "Error in loadDataIntoQueue:" << e.what();
     }
+    
     file.close();
-
-    while (!pq.empty()) {
-        DataItem item = pq.pop();
-        if (item.ifaccept.toInt() == 0 || item.ifaccept.toInt() == 1) {
-            displayList.append(item);
-        }
-    }
-
-    // loadDataIntoTableView();
 }
-
-
-
 
 void MainWindow::loadTotalData() {
     QFile file(DATA_PATH("data.txt"));
@@ -598,7 +657,7 @@ void MainWindow::loadDataIntodeleteTableView() {
               << new QStandardItem(current->whathappend)
               << new QStandardItem(current->date);
 
-        QString ifacceptStr = current->ifaccept.replace("\n", " ");
+        QString ifacceptStr = QString(current->ifaccept).replace("\n", " ");
         if (ifacceptStr == "1") {
             ifacceptStr = "急诊";
         } else if (ifacceptStr == "0") {
@@ -901,32 +960,6 @@ void MainWindow::on_pushButton_17_clicked() {
                 currentItem = currentItem->next;
             }
 
-            // // 遍历队列链表以找到对应的节点
-            // DataItem *currentQueueItem = headQueueItem; // 使用新的变量currentQueueItem
-            // bool foundQueueItem = false;
-            // while (currentQueueItem != nullptr) {
-            //     // 比较链表节点的数据与模型中选中行的数据是否一致
-            //     if (currentQueueItem->ID == model->item(row, 0)->text() &&
-            //         currentQueueItem->name == model->item(row, 1)->text() &&
-            //         currentQueueItem->age == model->item(row, 2)->text() &&
-            //         currentQueueItem->sex == model->item(row, 3)->text() &&
-            //         currentQueueItem->whathappend == model->item(row, 4)->text() &&
-            //         currentQueueItem->date == model->item(row, 5)->text() &&
-            //         currentQueueItem->ifaccept == model->item(row, 6)->text()) {
-            //         // 更新链表中的节点
-            //         currentQueueItem->ID = fields[0];
-            //         currentQueueItem->name = fields[1];
-            //         currentQueueItem->age = fields[2];
-            //         currentQueueItem->sex = fields[3];
-            //         currentQueueItem->whathappend = fields[4];
-            //         currentQueueItem->date = fields[5];
-            //         currentQueueItem->ifaccept = fields[6];
-            //         foundQueueItem = true;
-            //         break;
-            //     }
-            //     currentQueueItem = currentQueueItem->next;
-            // }
-
             if (!foundItem) {
                 QMessageBox::warning(this, tr("Update Error"), tr("未找到匹配的数据项"));
                 continue; // 未找到匹配的数据项，跳过当前行
@@ -958,53 +991,6 @@ void MainWindow::on_pushButton_17_clicked() {
 }
 
 void MainWindow::refreshTableView() {
-    // QStandardItemModel *model = qobject_cast<QStandardItemModel*>(ui->tableView->model());
-    // if (!model) {
-    //     model = new QStandardItemModel(this);
-    //     ui->tableView->setModel(model);
-    // }
-    // model->clear();
-    // model->setHorizontalHeaderLabels(QStringList() << "ID" << "Name" << "Age" << "Sex" << "What Happened" << "Date" << "If Accept");
-
-    // DataItem *current = headItem;
-    // while (current != nullptr) {
-    //     QList<QStandardItem *> items;
-    //     QStandardItem *idItem = new QStandardItem(current->ID);
-    //     idItem->setData(QVariant::fromValue<void*>(current), Qt::UserRole); // 存储链表节点指针
-    //     items << idItem
-    //           << new QStandardItem(current->name)
-    //           << new QStandardItem(current->age)
-    //           << new QStandardItem(current->sex)
-    //           << new QStandardItem(current->whathappend)
-    //           << new QStandardItem(current->date);
-
-    //     QString ifacceptStr = QString(current->ifaccept).replace("\n", " ");
-    //     if (ifacceptStr == "1") {
-    //         ifacceptStr = "急诊";
-    //     } else if (ifacceptStr == "0") {
-    //         ifacceptStr = "门诊";
-    //     } else if (ifacceptStr == "-1") {
-    //         ifacceptStr = "已就诊";
-    //     }
-    //     items << new QStandardItem(ifacceptStr);
-
-    //     for (QStandardItem *subitem : items) {
-    //         subitem->setTextAlignment(Qt::AlignCenter);
-    //         subitem->setEditable(true);
-    //     }
-    //     model->appendRow(items);
-    //     current = current->next;
-    // }
-
-    // ui->tableView->setModel(model);
-    // ui->tableView->setColumnWidth(0, 105);
-    // ui->tableView->setColumnWidth(1, 100);
-    // ui->tableView->setColumnWidth(2, 50);
-    // ui->tableView->setColumnWidth(3, 70);
-    // ui->tableView->setColumnWidth(4, 180);
-    // ui->tableView->setColumnWidth(5, 130);
-    // ui->tableView->setColumnWidth(6, 40);
-    // ui->tableView->resizeRowsToContents();
     DataItem item;
     DataItem queueitem;
     loadTotalData(); // 加载数据
@@ -1035,18 +1021,6 @@ void MainWindow::on_pushButton_15_clicked() {
         item.ifaccept = fields[6].replace("\n","");
         item.next = nullptr;
 
-        // DataItem queueitem;
-
-        // queueitem.ID = fields[0];
-        // queueitem.name = fields[1];
-        // queueitem.age = fields[2];
-        // queueitem.sex = fields[3];
-        // queueitem.whathappend = fields[4];
-        // queueitem.date = fields[5];
-        // queueitem.ifaccept = fields[6].replace("\n","");
-        // queueitem.next = nullptr;
-
-
         qDebug() << "Parsed data:" << item.ID << item.name << item.age << item.sex << item.whathappend << item.date << item.ifaccept;
         addDataItem(item); // 添加到链表头部
         qDebug() << "add OK!";
@@ -1076,49 +1050,6 @@ void MainWindow::on_pushButton_15_clicked() {
         loadDataIntoTableView();
     }
 }
-
-
-void MainWindow::on_pushButton_3_clicked() {
-    // QString searchText = QInputDialog::getText(this, "Input", "Enter search text:");
-    // QStandardItemModel *model = new QStandardItemModel(this);
-    // model->setHorizontalHeaderLabels(QStringList() << "ID" << "Name" << "Age" << "Sex" << "What Happened" << "Date" << "If Accept");
-
-    // DataItem *current = headItem;
-    // while (current != nullptr) {
-    //     if (current->ID.contains(searchText) || current->name.contains(searchText) || current->age.contains(searchText) ||
-    //         current->sex.contains(searchText) || current->whathappend.contains(searchText) || current->date.contains(searchText) ||
-    //         current->ifaccept.contains(searchText)) {
-    //         QList<QStandardItem *> items;
-    //         items << new QStandardItem(current->ID)
-    //               << new QStandardItem(current->name)
-    //               << new QStandardItem(current->age)
-    //               << new QStandardItem(current->sex)
-    //               << new QStandardItem(current->whathappend)
-    //               << new QStandardItem(current->date);
-
-    //         QString ifacceptStr = QString(current->ifaccept).replace("\n", " ");
-    //         if (ifacceptStr == "1") {
-    //             ifacceptStr = "急诊";
-    //         } else if (ifacceptStr == "0") {
-    //             ifacceptStr = "门诊";
-    //         } else if (ifacceptStr == "-1") {
-    //             ifacceptStr = "已就诊";
-    //         }
-    //         items << new QStandardItem(ifacceptStr);
-
-    //         for (QStandardItem *subitem : items) {
-    //             subitem->setTextAlignment(Qt::AlignCenter);
-    //             subitem->setEditable(true);
-    //         }
-    //         model->appendRow(items);
-    //     }
-    //     current = current->next;
-    // }
-    // ui->tableView->setModel(model);
-
-}
-
-
 
 void MainWindow::setCurrentTime(QLabel* label) {
     QDateTime currentDateTime = QDateTime::currentDateTime();
@@ -1256,128 +1187,106 @@ void MainWindow::on_deleteEmpButton_clicked()
 }
 
 TreeNode* MainWindow::createDepartmentTree() {
-    TreeNode* root = new TreeNode{"校医室"};
+    TreeNode* root = new TreeNode;
+    root->name = "校医室";
 
-    TreeNode* fluDept = new TreeNode{"感冒发热科"};
-    fluDept->children.append(new TreeNode{"诊室1"});
-    fluDept->children.append(new TreeNode{"诊室2"});
+    // 感冒发热科及其诊室
+    TreeNode* fluDept = new TreeNode;
+    fluDept->name = "感冒发热科";
+    root->children[root->childCount++] = fluDept;
 
-    TreeNode* internalDept = new TreeNode{"内科"};
-    internalDept->children.append(new TreeNode{"诊室3"});
-    internalDept->children.append(new TreeNode{"诊室4"});
+    TreeNode* room1 = new TreeNode;
+    room1->name = "诊室1";
+    fluDept->children[fluDept->childCount++] = room1;
 
-    TreeNode* surgeryDept = new TreeNode{"外科"};
-    surgeryDept->children.append(new TreeNode{"诊室5"});
-    surgeryDept->children.append(new TreeNode{"诊室6"});
+    TreeNode* room2 = new TreeNode;
+    room2->name = "诊室2";
+    fluDept->children[fluDept->childCount++] = room2;
 
-    TreeNode* emergencyDept = new TreeNode{"急诊"};
-    emergencyDept->children.append(new TreeNode{"诊室7"});
-    emergencyDept->children.append(new TreeNode{"诊室8"});
+    // 内科及其诊室
+    TreeNode* internalDept = new TreeNode;
+    internalDept->name = "内科";
+    root->children[root->childCount++] = internalDept;
 
-    TreeNode* pharmacyDept = new TreeNode{"药房"};
-    TreeNode* treatmentDept = new TreeNode{"处置室"};
+    TreeNode* room3 = new TreeNode;
+    room3->name = "诊室3";
+    internalDept->children[internalDept->childCount++] = room3;
 
-    root->children.append(fluDept);
-    root->children.append(internalDept);
-    root->children.append(surgeryDept);
-    root->children.append(emergencyDept);
-    root->children.append(pharmacyDept);
-    root->children.append(treatmentDept);
+    TreeNode* room4 = new TreeNode;
+    room4->name = "诊室4";
+    internalDept->children[internalDept->childCount++] = room4;
+
+    // 外科及其诊室
+    TreeNode* surgeryDept = new TreeNode;
+    surgeryDept->name = "外科";
+    root->children[root->childCount++] = surgeryDept;
+
+    TreeNode* room5 = new TreeNode;
+    room5->name = "诊室5";
+    surgeryDept->children[surgeryDept->childCount++] = room5;
+
+    TreeNode* room6 = new TreeNode;
+    room6->name = "诊室6";
+    surgeryDept->children[surgeryDept->childCount++] = room6;
+
+    // 急诊及其诊室
+    TreeNode* emergencyDept = new TreeNode;
+    emergencyDept->name = "急诊";
+    root->children[root->childCount++] = emergencyDept;
+
+    TreeNode* room7 = new TreeNode;
+    room7->name = "诊室7";
+    emergencyDept->children[emergencyDept->childCount++] = room7;
+
+    TreeNode* room8 = new TreeNode;
+    room8->name = "诊室8";
+    emergencyDept->children[emergencyDept->childCount++] = room8;
+
+    // 其他部门
+    TreeNode* pharmacyDept = new TreeNode;
+    pharmacyDept->name = "药房";
+    root->children[root->childCount++] = pharmacyDept;
+
+    TreeNode* treatmentDept = new TreeNode;
+    treatmentDept->name = "处置室";
+    root->children[root->childCount++] = treatmentDept;
 
     return root;
 }
 
 void MainWindow::populateTreeView(QTreeView* treeView, TreeNode* root) {
-    QStandardItemModel* model = new QStandardItemModel;
+    if (!root) return;
 
-    // 清除所有列
-    model->removeColumns(0, model->columnCount());
-
-    // 设置根节点
+    QStandardItemModel* model = new QStandardItemModel(this);
     QStandardItem* rootItem = new QStandardItem(root->name);
     model->appendRow(rootItem);
 
-    // 递归添加子节点
-    std::function<void(TreeNode*, QStandardItem*)> addChildren = [&](TreeNode* node, QStandardItem* parentItem) {
-        for (TreeNode* child : node->children) {
-            QStandardItem* childItem = new QStandardItem(child->name);
-            parentItem->appendRow(childItem);
-            addChildren(child, childItem);
-        }
-    };
+    std::function<void(TreeNode*, QStandardItem*)> populateItems = 
+        [&populateItems](TreeNode* node, QStandardItem* parentItem) -> void {
+            if (!node) return;
+            for (int i = 0; i < node->childCount; i++) {
+                if (node->children[i]) {
+                    QStandardItem* item = new QStandardItem(node->children[i]->name);
+                    parentItem->appendRow(item);
+                    populateItems(node->children[i], item);
+                }
+            }
+        };
 
-    addChildren(root, rootItem);
-
-    // 禁用header
-    treeView->header()->hide();
-
+    populateItems(root, rootItem);
     treeView->setModel(model);
 }
 
-
-void MainWindow::onTreeViewClicked(const QModelIndex& index) {
-    QString departmentName = index.data().toString();
-
-    if (dutySchedules.find(departmentName) != dutySchedules.end()) {
-        // 显示诊室的排班表
-        displayDutySchedule(workTableView, dutySchedules[departmentName]);
-    } else {
-        // 获取科室节点的所有子节点的排班表
-        TreeNode* departmentNode = getNodeByName(root, departmentName);
-        if (departmentNode) {
-            DutySchedule combinedSchedule = combineDutySchedules(departmentNode);
-            displayDutySchedule(workTableView, combinedSchedule);
-        }
-    }
-}
 TreeNode* MainWindow::getNodeByName(TreeNode* root, const QString& name) {
-    if (root->name == name) {
-        return root;
-    }
+    if (!root) return nullptr;
+    if (root->name == name) return root;
 
-    for (TreeNode* child : root->children) {
-        TreeNode* result = getNodeByName(child, name);
-        if (result) {
-            return result;
-        }
+    for (int i = 0; i < root->childCount; i++) {
+        TreeNode* found = getNodeByName(root->children[i], name);
+        if (found) return found;
     }
 
     return nullptr;
-}
-
-DutySchedule MainWindow::combineDutySchedules(TreeNode* departmentNode) {
-    DutySchedule combinedSchedule;
-
-    // 遍历所有子节点
-    for (TreeNode* child : departmentNode->children) {
-        if (dutySchedules.find(child->name) != dutySchedules.end()) {
-            DutySchedule childSchedule = dutySchedules[child->name];
-
-            // 将子节点的排班表加到综合排班表上
-            for (int i = 0; i < 3; ++i) {
-                for (int j = 0; j < 7; ++j) {
-                    combinedSchedule.schedule[i][j] |= childSchedule.schedule[i][j];
-                }
-            }
-        }
-    }
-
-    return combinedSchedule;
-}
-
-void MainWindow::on_searchTextBox_returnPressed()
-{
-    qDebug() << "Search";
-}
-
-void MainWindow::selectedPushButton(QPushButton *button)
-{
-    button->setStyleSheet("QPushButton{background:#333333;border: none;border-left:6px solid #1E90FF;margin: 0px;padding: 0px;color:white;text-align: left;padding-left:24px;}");
-}
-
-void MainWindow::deselectedPushButton(QPushButton *button)
-{
-    button->setStyleSheet("QPushButton{ background:#1F1F1F; border: none; margin: 0px; padding: 0px; border-left:6px solid #1F1F1F; color:white; text-align: left;padding-left:24px;} QPushButton:hover{background:#333333;border: none;border-left:6px solid #333333;margin: 0px;padding: 0px;color:white;text-align: left;padding-left:24px;}");
 }
 
 DutySchedule MainWindow::createDutySchedule(int personCount, int offset) {
@@ -1398,8 +1307,6 @@ DutySchedule MainWindow::createDutySchedule(int personCount, int offset) {
 
     return schedule;
 }
-
-
 
 void MainWindow::autoGenerateDutySchedules(std::map<QString, DutySchedule> &schedules, int personCount) {
     int offset = 0;
@@ -1467,3 +1374,53 @@ void MainWindow::on_aboutButton_clicked()
     abt->show();
 }
 
+void MainWindow::onTreeViewClicked(const QModelIndex& index) {
+    QString departmentName = index.data().toString();
+
+    if (dutySchedules.find(departmentName) != dutySchedules.end()) {
+        // 显示诊室的排班表
+        displayDutySchedule(workTableView, dutySchedules[departmentName]);
+    } else {
+        // 获取科室节点的所有子节点的排班表
+        TreeNode* departmentNode = getNodeByName(root, departmentName);
+        if (departmentNode) {
+            DutySchedule combinedSchedule = combineDutySchedules(departmentNode);
+            displayDutySchedule(workTableView, combinedSchedule);
+        }
+    }
+}
+
+DutySchedule MainWindow::combineDutySchedules(TreeNode* departmentNode) {
+    DutySchedule combinedSchedule;
+
+    // 遍历所有子节点
+    for (int i = 0; i < departmentNode->childCount; i++) {
+        if (dutySchedules.find(departmentNode->children[i]->name) != dutySchedules.end()) {
+            DutySchedule childSchedule = dutySchedules[departmentNode->children[i]->name];
+
+            // 将子节点的排班表加到综合排班表上
+            for (int i = 0; i < 3; ++i) {
+                for (int j = 0; j < 7; ++j) {
+                    combinedSchedule.schedule[i][j] |= childSchedule.schedule[i][j];
+                }
+            }
+        }
+    }
+
+    return combinedSchedule;
+}
+
+void MainWindow::on_searchTextBox_returnPressed()
+{
+    qDebug() << "Search";
+}
+
+void MainWindow::selectedPushButton(QPushButton *button)
+{
+    button->setStyleSheet("QPushButton{background:#333333;border: none;border-left:6px solid #1E90FF;margin: 0px;padding: 0px;color:white;text-align: left;padding-left:24px;}");
+}
+
+void MainWindow::deselectedPushButton(QPushButton *button)
+{
+    button->setStyleSheet("QPushButton{ background:#1F1F1F; border: none; margin: 0px; padding: 0px; border-left:6px solid #1F1F1F; color:white; text-align: left;padding-left:24px;} QPushButton:hover{background:#333333;border: none;border-left:6px solid #333333;margin: 0px;padding: 0px;color:white;text-align: left;padding-left:24px;}");
+}
